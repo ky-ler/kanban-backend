@@ -1,9 +1,9 @@
 package com.kylerriggs.kanban.issue;
 
 import com.kylerriggs.kanban.entities.BaseEntity;
-import com.kylerriggs.kanban.entities.Priority;
+import com.kylerriggs.kanban.priority.Priority;
 import com.kylerriggs.kanban.project.Project;
-import com.kylerriggs.kanban.entities.Status;
+import com.kylerriggs.kanban.status.Status;
 import com.kylerriggs.kanban.user.User;
 import jakarta.persistence.*;
 import lombok.*;

@@ -1,4 +1,4 @@
-package com.kylerriggs.kanban.entities;
+package com.kylerriggs.kanban.status;
 
 import jakarta.persistence.*;
 import lombok.*;
