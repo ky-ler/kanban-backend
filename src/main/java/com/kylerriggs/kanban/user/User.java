@@ -1,6 +1,6 @@
 package com.kylerriggs.kanban.user;
 
-import com.kylerriggs.kanban.entities.BaseEntity;
+import com.kylerriggs.kanban.common.BaseEntity;
 import com.kylerriggs.kanban.issue.Issue;
 import com.kylerriggs.kanban.project.Project;
 import com.kylerriggs.kanban.project.ProjectUser;

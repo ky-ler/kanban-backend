@@ -1,6 +1,6 @@
 package com.kylerriggs.kanban.project;
 
-import com.kylerriggs.kanban.entities.BaseEntity;
+import com.kylerriggs.kanban.common.BaseEntity;
 import com.kylerriggs.kanban.issue.Issue;
 import com.kylerriggs.kanban.user.User;
 import jakarta.persistence.*;
