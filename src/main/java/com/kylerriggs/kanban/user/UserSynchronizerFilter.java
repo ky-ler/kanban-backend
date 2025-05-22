@@ -1,6 +1,5 @@
-package com.kylerriggs.kanban.interceptor;
+package com.kylerriggs.kanban.user;
 
-import com.kylerriggs.kanban.user.UserSynchronizer;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
