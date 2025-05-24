@@ -13,12 +13,20 @@ public class UserMapper {
             user.setId(claims.get("sub").toString());
         }
 
-        if (claims.containsKey("username")) {
-            user.setUsername(claims.get("username").toString());
+        if (claims.containsKey("preferred_username")) {
+            user.setUsername(claims.get("preferred_username").toString());
         }
 
         if (claims.containsKey("email")) {
             user.setEmail(claims.get("email").toString());
+        }
+
+        if (claims.containsKey("given_name")) {
+            user.setFirstName(claims.get("given_name").toString());
+        }
+
+        if (claims.containsKey("family_name")) {
+            user.setLastName(claims.get("family_name").toString());
         }
 
         return user;
