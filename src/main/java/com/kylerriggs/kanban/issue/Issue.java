@@ -1,5 +1,7 @@
 package com.kylerriggs.kanban.issue;
 
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import com.kylerriggs.kanban.common.BaseEntity;
 import com.kylerriggs.kanban.priority.Priority;
 import com.kylerriggs.kanban.project.Project;
@@ -16,6 +18,10 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder(toBuilder = true)
 @Entity
 @Table(name = "issues")
+@JsonIdentityInfo(
+        generator = ObjectIdGenerators.PropertyGenerator.class,
+        property  = "id"
+)
 public class Issue extends BaseEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -42,7 +48,7 @@ public class Issue extends BaseEntity {
     private Priority priority;
 
     @Column(nullable = false, length = 100)
-    private String name;
+    private String title;
 
     @Column(columnDefinition = "TEXT")
     private String description;
