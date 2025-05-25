@@ -18,26 +18,24 @@ public class ProjectController {
 
     @PostMapping
     public ResponseEntity<ProjectDto> createProject(@RequestBody CreateProjectRequest req) {
-        Project project = projectService.createProject(
+        ProjectDto project = projectService.createProject(
                 req.name(), req.description()
         );
 
-        return ResponseEntity.ok(toDto(project));
+        return ResponseEntity.ok(project);
     }
 
     @GetMapping("/{projectId}")
     public ResponseEntity<ProjectDto> getProject(@PathVariable Long projectId) {
-        Project project = projectService.getById(projectId);
-        return ResponseEntity.ok(toDto(project));
+        ProjectDto project = projectService.getById(projectId);
+        return ResponseEntity.ok(project);
     }
 
     @GetMapping
     public ResponseEntity<List<ProjectDto>> getProjectsForUser() {
-        List<Project> projects = projectService.getAllForUser();
-        List<ProjectDto> projectDtos = projects.stream()
-                .map(this::toDto)
-                .toList();
-        return ResponseEntity.ok(projectDtos);
+        List<ProjectDto> projects = projectService.getAllForUser();
+
+        return ResponseEntity.ok(projects);
     }
 
     @PutMapping("/{projectId}")
@@ -50,12 +48,11 @@ public class ProjectController {
             return ResponseEntity.notFound().build();
         }
 
-        Project updated = projectService.updateProject(
+        ProjectDto updated = projectService.updateProject(
                 projectId, req.name(), req.description()
         );
-        log.error(project.getName());
 
-        return ResponseEntity.ok(toDto(updated));
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{projectId}")
@@ -95,34 +92,5 @@ public class ProjectController {
         projectService.removeCollaborator(projectId, userId);
 
         return ResponseEntity.noContent().build();
-    }
-
-    private ProjectDto toDto(Project project) {
-        return new ProjectDto(
-                project.getId(),
-                project.getName(),
-                project.getDescription(),
-                new UserSummaryDto(
-                        project.getCreatedBy().getId(),
-                        project.getCreatedBy().getUsername(),
-                        project.getCreatedBy().getEmail(),
-                        project.getCreatedBy().getFirstName(),
-                        project.getCreatedBy().getLastName()
-                ),
-                project.getCollaborators().stream()
-                        .map(c -> new CollaboratorDto(
-                                new UserSummaryDto(
-                                        c.getUser().getId(),
-                                        c.getUser().getUsername(),
-                                        c.getUser().getEmail(),
-                                        c.getUser().getFirstName(),
-                                        c.getUser().getLastName()
-                                ),
-                                c.getRole()
-                        ))
-                        .toArray(CollaboratorDto[]::new),
-                project.getDateCreated().toString(),
-                project.getDateModified().toString()
-        );
     }
 }

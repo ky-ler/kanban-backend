@@ -1,5 +1,8 @@
 package com.kylerriggs.kanban.project;
 
+import com.kylerriggs.kanban.project.dto.CollaboratorDto;
+import com.kylerriggs.kanban.project.dto.ProjectDto;
+import com.kylerriggs.kanban.project.dto.UserSummaryDto;
 import com.kylerriggs.kanban.user.User;
 import com.kylerriggs.kanban.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -17,9 +20,38 @@ public class ProjectService {
     private final UserRepository userRepository;
     private final ProjectUserRepository projectUserRepository;
 
+    private ProjectDto toDto(Project project) {
+        return new ProjectDto(
+                project.getId(),
+                project.getName(),
+                project.getDescription(),
+                new UserSummaryDto(
+                        project.getCreatedBy().getId(),
+                        project.getCreatedBy().getUsername(),
+                        project.getCreatedBy().getEmail(),
+                        project.getCreatedBy().getFirstName(),
+                        project.getCreatedBy().getLastName()
+                ),
+                project.getCollaborators().stream()
+                        .map(c -> new CollaboratorDto(
+                                new UserSummaryDto(
+                                        c.getUser().getId(),
+                                        c.getUser().getUsername(),
+                                        c.getUser().getEmail(),
+                                        c.getUser().getFirstName(),
+                                        c.getUser().getLastName()
+                                ),
+                                c.getRole()
+                        ))
+                        .toArray(CollaboratorDto[]::new),
+                project.getDateCreated().toString(),
+                project.getDateModified().toString()
+        );
+    }
+
     // Create a new project and assign the creator as ADMIN
     @Transactional
-    public Project createProject(String name, String description) {
+    public ProjectDto createProject(String name, String description) {
         String requestUserId = SecurityContextHolder.getContext().getAuthentication().getName();
         User owner = userRepository.findById(requestUserId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + requestUserId));
@@ -40,33 +72,41 @@ public class ProjectService {
 
         projectUserRepository.save(membership);
 
-        return project;
+        return toDto(project);
     }
 
     // Retrieve project by ID
     @Transactional(readOnly = true)
     @PreAuthorize("@projectAccess.canView(#projectId)")
-    public Project getById(Long projectId) {
-        return projectRepository.findById(projectId)
+    public ProjectDto getById(Long projectId) {
+        Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+
+        return toDto(project);
     }
 
     // Get all projects where the user is a collaborator
     @Transactional(readOnly = true)
 //    @PreAuthorize("@projectAccess.canView()")
-    public List<Project> getAllForUser() {
+    public List<ProjectDto> getAllForUser() {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
-        return projectRepository.findAllByCollaboratorsUserId(userId);
+        List<Project> projects = projectRepository.findAllByCollaboratorsUserId(userId);
+
+        return projects.stream()
+                .map(this::toDto)
+                .toList();
     }
 
     // Update the name or description of an existing project
     @Transactional
     @PreAuthorize("@projectAccess.canModify(#projectId)")
-    public Project updateProject(Long projectId, String name, String description) {
+    public ProjectDto updateProject(Long projectId, String name, String description) {
         Project project = getById(projectId);
         project.setName(name);
         project.setDescription(description);
-        return projectRepository.save(project);
+        projectRepository.save(project);
+
+        return toDto(project);
     }
 
     // Delete a project and its collaborators
