@@ -1,4 +1,4 @@
-package com.kylerriggs.kanban.project.dto;
+package com.kylerriggs.kanban.user.dto;
 
 public record UserSummaryDto(String id,
                              String username,
