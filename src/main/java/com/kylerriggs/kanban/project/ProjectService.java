@@ -1,8 +1,7 @@
 package com.kylerriggs.kanban.project;
 
-import com.kylerriggs.kanban.project.dto.CollaboratorDto;
 import com.kylerriggs.kanban.project.dto.ProjectDto;
-import com.kylerriggs.kanban.project.dto.UserSummaryDto;
+import com.kylerriggs.kanban.project.dto.ProjectSummary;
 import com.kylerriggs.kanban.user.User;
 import com.kylerriggs.kanban.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -19,35 +18,8 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ProjectUserRepository projectUserRepository;
+    private final ProjectMapper projectMapper;
 
-    private ProjectDto toDto(Project project) {
-        return new ProjectDto(
-                project.getId(),
-                project.getName(),
-                project.getDescription(),
-                new UserSummaryDto(
-                        project.getCreatedBy().getId(),
-                        project.getCreatedBy().getUsername(),
-                        project.getCreatedBy().getEmail(),
-                        project.getCreatedBy().getFirstName(),
-                        project.getCreatedBy().getLastName()
-                ),
-                project.getCollaborators().stream()
-                        .map(c -> new CollaboratorDto(
-                                new UserSummaryDto(
-                                        c.getUser().getId(),
-                                        c.getUser().getUsername(),
-                                        c.getUser().getEmail(),
-                                        c.getUser().getFirstName(),
-                                        c.getUser().getLastName()
-                                ),
-                                c.getRole()
-                        ))
-                        .toArray(CollaboratorDto[]::new),
-                project.getDateCreated().toString(),
-                project.getDateModified().toString()
-        );
-    }
 
     // Create a new project and assign the creator as ADMIN
     @Transactional
@@ -72,7 +44,7 @@ public class ProjectService {
 
         projectUserRepository.save(membership);
 
-        return toDto(project);
+        return projectMapper.toDto(project);
     }
 
     // Retrieve project by ID
@@ -82,18 +54,18 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
 
-        return toDto(project);
+        return projectMapper.toDto(project);
     }
 
     // Get all projects where the user is a collaborator
     @Transactional(readOnly = true)
 //    @PreAuthorize("@projectAccess.canView()")
-    public List<ProjectDto> getAllForUser() {
+    public List<ProjectSummary> getAllForUser() {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         List<Project> projects = projectRepository.findAllByCollaboratorsUserId(userId);
 
         return projects.stream()
-                .map(this::toDto)
+                .map(projectMapper::toSummaryDto)
                 .toList();
     }
 
@@ -101,12 +73,13 @@ public class ProjectService {
     @Transactional
     @PreAuthorize("@projectAccess.canModify(#projectId)")
     public ProjectDto updateProject(Long projectId, String name, String description) {
-        Project project = getById(projectId);
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
         project.setName(name);
         project.setDescription(description);
         projectRepository.save(project);
 
-        return toDto(project);
+        return projectMapper.toDto(project);
     }
 
     // Delete a project and its collaborators
@@ -124,7 +97,8 @@ public class ProjectService {
     @Transactional
     @PreAuthorize("@projectAccess.canModify(#projectId)")
     public void addCollaborator(Long projectId, String userId, ProjectRole role) {
-        Project project = getById(projectId);
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 

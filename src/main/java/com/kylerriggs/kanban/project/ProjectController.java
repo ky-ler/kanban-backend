@@ -32,8 +32,8 @@ public class ProjectController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ProjectDto>> getProjectsForUser() {
-        List<ProjectDto> projects = projectService.getAllForUser();
+    public ResponseEntity<List<ProjectSummary>> getProjectsForUser() {
+        List<ProjectSummary> projects = projectService.getAllForUser();
 
         return ResponseEntity.ok(projects);
     }
@@ -43,7 +43,7 @@ public class ProjectController {
             @PathVariable Long projectId,
             @RequestBody UpdateProjectRequest req
     ) {
-        Project project = projectService.getById(projectId);
+        ProjectDto project = projectService.getById(projectId);
         if (project == null) {
             return ResponseEntity.notFound().build();
         }
