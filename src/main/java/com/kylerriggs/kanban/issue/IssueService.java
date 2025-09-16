@@ -145,7 +145,7 @@ public class IssueService {
     @PreAuthorize("@projectAccess.canModify(#projectId)")
     public void deleteIssue(Long projectId, Long issueId) {
         if (!issueRepository.existsByProjectIdAndId(projectId, issueId)) {
-            throw new ResourceNotFoundException("Issue not found: " + issueId);
+            throw new ResourceNotFoundException("Issue not found: " + issueId + " for project: " + projectId);
         }
 
         issueRepository.deleteById(issueId);
