@@ -1,6 +1,7 @@
 package com.kylerriggs.kanban.project;
 
 import com.kylerriggs.kanban.project.dto.*;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +18,7 @@ public class ProjectController {
     private final ProjectService projectService;
 
     @PostMapping
-    public ResponseEntity<ProjectDto> createProject(@RequestBody CreateProjectRequest req) {
+    public ResponseEntity<ProjectDto> createProject(@Valid @RequestBody CreateProjectRequest req) {
         ProjectDto project = projectService.createProject(
                 req.name(), req.description()
         );
@@ -41,7 +42,7 @@ public class ProjectController {
     @PutMapping("/{projectId}")
     public ResponseEntity<ProjectDto> updateProject(
             @PathVariable Long projectId,
-            @RequestBody UpdateProjectRequest req
+            @Valid @RequestBody UpdateProjectRequest req
     ) {
         ProjectDto project = projectService.getById(projectId);
         if (project == null) {
@@ -56,7 +57,7 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{projectId}")
-    public ResponseEntity<Void> deleteProject(@PathVariable Long projectId) {
+    public ResponseEntity<Void> deleteProject(@Valid @PathVariable Long projectId) {
         projectService.deleteProject(projectId);
         return ResponseEntity.noContent().build();
     }
@@ -64,7 +65,7 @@ public class ProjectController {
     @PostMapping("/{projectId}/collaborators")
     public ResponseEntity<Void> addCollaborator(
             @PathVariable Long projectId,
-            @RequestBody CollaboratorRequest req
+            @Valid @RequestBody CollaboratorRequest req
     ) {
         projectService.addCollaborator(
                 projectId, req.userId(), req.role()
@@ -77,7 +78,7 @@ public class ProjectController {
     public ResponseEntity<Void> updateCollaboratorRole(
             @PathVariable Long projectId,
             @PathVariable String userId,
-            @RequestBody RoleUpdateRequest req
+            @Valid @RequestBody RoleUpdateRequest req
     ) {
         projectService.updateCollaboratorRole(projectId, userId, req.newRole());
 

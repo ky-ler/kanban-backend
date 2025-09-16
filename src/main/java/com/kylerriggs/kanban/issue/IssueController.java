@@ -2,6 +2,7 @@ package com.kylerriggs.kanban.issue;
 
 import com.kylerriggs.kanban.issue.dto.CreateIssueRequest;
 import com.kylerriggs.kanban.issue.dto.IssueDto;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -30,7 +31,7 @@ public class IssueController {
     @PreAuthorize("@projectAccess.canModify(#projectId)")
     public ResponseEntity<IssueDto> create(
             @PathVariable Long projectId,
-            @RequestBody CreateIssueRequest req
+            @Valid @RequestBody CreateIssueRequest req
     ) {
         CreateIssueRequest createIssueRequest = new CreateIssueRequest(
                 projectId,
@@ -52,7 +53,7 @@ public class IssueController {
             @PathVariable Long projectId,
             @PathVariable Long issueId
     ) {
-        IssueDto issue = issueService.getById(issueId);
+        IssueDto issue = issueService.getById(projectId, issueId);
         return ResponseEntity.ok(issue);
     }
 
@@ -61,9 +62,9 @@ public class IssueController {
     public ResponseEntity<IssueDto> update(
             @PathVariable Long projectId,
             @PathVariable Long issueId,
-            @RequestBody CreateIssueRequest req
+            @Valid @RequestBody CreateIssueRequest req
     ) {
-        IssueDto issue = issueService.getById(issueId);
+        IssueDto issue = issueService.getById(projectId, issueId);
         if (issue == null) {
             return ResponseEntity.notFound().build();
         }
