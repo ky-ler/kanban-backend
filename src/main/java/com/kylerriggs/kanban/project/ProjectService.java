@@ -1,5 +1,6 @@
 package com.kylerriggs.kanban.project;
 
+import com.kylerriggs.kanban.exception.ResourceNotFoundException;
 import com.kylerriggs.kanban.project.dto.ProjectDto;
 import com.kylerriggs.kanban.project.dto.ProjectSummary;
 import com.kylerriggs.kanban.user.User;
@@ -26,7 +27,7 @@ public class ProjectService {
     public ProjectDto createProject(String name, String description) {
         String requestUserId = SecurityContextHolder.getContext().getAuthentication().getName();
         User owner = userRepository.findById(requestUserId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + requestUserId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + requestUserId));
 
         Project project = Project.builder()
                 .name(name)
@@ -52,7 +53,7 @@ public class ProjectService {
     @PreAuthorize("@projectAccess.canView(#projectId)")
     public ProjectDto getById(Long projectId) {
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectId));
 
         return projectMapper.toDto(project);
     }
@@ -74,7 +75,7 @@ public class ProjectService {
     @PreAuthorize("@projectAccess.canModify(#projectId)")
     public ProjectDto updateProject(Long projectId, String name, String description) {
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectId));
         project.setName(name);
         project.setDescription(description);
         projectRepository.save(project);
@@ -87,7 +88,7 @@ public class ProjectService {
     @PreAuthorize("@projectAccess.canModify(#projectId)")
     public void deleteProject(Long projectId) {
         if (!projectRepository.existsById(projectId)) {
-            throw new IllegalArgumentException("Project not found: " + projectId);
+            throw new ResourceNotFoundException("Project not found: " + projectId);
         }
 
         projectRepository.deleteById(projectId);
@@ -98,9 +99,9 @@ public class ProjectService {
     @PreAuthorize("@projectAccess.canModify(#projectId)")
     public void addCollaborator(Long projectId, String userId, ProjectRole role) {
         Project project = projectRepository.findById(projectId)
-                .orElseThrow(() -> new IllegalArgumentException("Project not found: " + projectId));
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectId));
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
 
         ProjectUserId key = new ProjectUserId(project.getId(), user.getId());
 
@@ -129,7 +130,7 @@ public class ProjectService {
 
         // If the user is the only collaborator, delete the project
         ProjectUser membership = projectUserRepository.findById(key)
-                .orElseThrow(() -> new IllegalArgumentException("Collaborator not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Collaborator not found"));
         if (membership.getProject().getCollaborators().size() == 1) {
             projectRepository.delete(membership.getProject());
             return;
@@ -140,7 +141,7 @@ public class ProjectService {
             ProjectUser otherMember = membership.getProject().getCollaborators().stream()
                     .filter(m -> !m.getUser().getId().equals(userId))
                     .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Other collaborator not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Other collaborator not found"));
             otherMember.setRole(ProjectRole.ADMIN);
             projectUserRepository.save(otherMember);
         }
@@ -155,7 +156,7 @@ public class ProjectService {
         ProjectUserId key = new ProjectUserId(projectId, userId);
         ProjectUser membership = projectUserRepository.findById(key)
                 .orElseThrow(() ->
-                        new IllegalArgumentException("Collaborator not found"));
+                        new ResourceNotFoundException("Collaborator not found"));
 
         if (membership.getProject().getCollaborators().size() == 1) {
             if (newRole != ProjectRole.ADMIN) {
