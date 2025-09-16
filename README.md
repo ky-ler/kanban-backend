@@ -67,7 +67,7 @@ To get a local copy up and running, follow these simple steps.
 
 1.  **Clone the repository:**
     ```sh
-    git clone [https://github.com/ky-ler/kanban-backend.git](https://github.com/ky-ler/kanban-backend.git)
+    git clone https://github.com/ky-ler/kanban-backend.git
     ```
 2.  **Navigate to the project directory:**
     ```sh
