@@ -39,9 +39,12 @@ public class IssueService {
     }
 
     @Transactional
-    public IssueDto getById(Long issueId) {
-        Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new IllegalArgumentException("Issue not found: " + issueId));
+    public IssueDto getById(Long projectId, Long issueId) {
+        Issue issue = issueRepository.findByProjectIdAndId(projectId, issueId);
+
+        if (issue == null) {
+            throw new IllegalArgumentException("Issue not found: " + issueId + " for project: " + projectId);
+        }
 
         return issueMapper.toDto(issue);
     }
@@ -88,8 +91,11 @@ public class IssueService {
     @Transactional
     @PreAuthorize("@projectAccess.canModify(#req.projectId())")
     public IssueDto updateIssue(Long issueId, CreateIssueRequest req) {
-        Issue issue = issueRepository.findById(issueId)
-                .orElseThrow(() -> new IllegalArgumentException("Issue not found: " + issueId));
+        Issue issue = issueRepository.findByProjectIdAndId(req.projectId(), issueId);
+
+        if (issue == null) {
+            throw new IllegalArgumentException("Issue not found: " + issueId + " for project: " + req.projectId());
+        }
 
         Project project = projectRepository.findById(req.projectId())
                 .orElseThrow(() -> new IllegalArgumentException("Project not found: " + req.projectId()));
@@ -137,7 +143,7 @@ public class IssueService {
     @Transactional
     @PreAuthorize("@projectAccess.canModify(#projectId)")
     public void deleteIssue(Long projectId, Long issueId) {
-        if (!issueRepository.existsById(issueId)) {
+        if (!issueRepository.existsByProjectIdAndId(projectId, issueId)) {
             throw new IllegalArgumentException("Issue not found: " + issueId);
         }
 
