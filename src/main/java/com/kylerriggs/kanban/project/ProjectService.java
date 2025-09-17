@@ -6,7 +6,6 @@ import com.kylerriggs.kanban.project.dto.ProjectSummary;
 import com.kylerriggs.kanban.user.User;
 import com.kylerriggs.kanban.user.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,7 +49,6 @@ public class ProjectService {
 
     // Retrieve project by ID
     @Transactional(readOnly = true)
-    @PreAuthorize("@projectAccess.canView(#projectId)")
     public ProjectDto getById(Long projectId) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectId));
@@ -60,7 +58,6 @@ public class ProjectService {
 
     // Get all projects where the user is a collaborator
     @Transactional(readOnly = true)
-//    @PreAuthorize("@projectAccess.canView()")
     public List<ProjectSummary> getAllForUser() {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
         List<Project> projects = projectRepository.findAllByCollaboratorsUserId(userId);
@@ -72,7 +69,6 @@ public class ProjectService {
 
     // Update the name or description of an existing project
     @Transactional
-    @PreAuthorize("@projectAccess.canModify(#projectId)")
     public ProjectDto updateProject(Long projectId, String name, String description) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectId));
@@ -85,7 +81,6 @@ public class ProjectService {
 
     // Delete a project and its collaborators
     @Transactional
-    @PreAuthorize("@projectAccess.canModify(#projectId)")
     public void deleteProject(Long projectId) {
         if (!projectRepository.existsById(projectId)) {
             throw new ResourceNotFoundException("Project not found: " + projectId);
@@ -96,7 +91,6 @@ public class ProjectService {
 
     // Add a collaborator with the given role
     @Transactional
-    @PreAuthorize("@projectAccess.canModify(#projectId)")
     public void addCollaborator(Long projectId, String userId, ProjectRole role) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectId));
@@ -120,7 +114,6 @@ public class ProjectService {
 
     // Remove a collaborator
     @Transactional
-    @PreAuthorize("@projectAccess.canModify(#projectId)")
     public void removeCollaborator(Long projectId, String userId) {
         ProjectUserId key = new ProjectUserId(projectId, userId);
 
@@ -151,7 +144,6 @@ public class ProjectService {
 
     // Update collaborator
     @Transactional
-    @PreAuthorize("@projectAccess.canModify(#projectId)")
     public void updateCollaboratorRole(Long projectId, String userId, ProjectRole newRole) {
         ProjectUserId key = new ProjectUserId(projectId, userId);
         ProjectUser membership = projectUserRepository.findById(key)

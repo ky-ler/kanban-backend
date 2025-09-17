@@ -27,6 +27,16 @@ public class IssueController {
         return ResponseEntity.ok(issues);
     }
 
+    @GetMapping("/{issueId}")
+    @PreAuthorize("@projectAccess.canView(#projectId)")
+    public ResponseEntity<IssueDto> get(
+            @PathVariable Long projectId,
+            @PathVariable Long issueId
+    ) {
+        IssueDto issue = issueService.getById(projectId, issueId);
+        return ResponseEntity.ok(issue);
+    }
+
     @PostMapping("/create")
     @PreAuthorize("@projectAccess.canModify(#projectId)")
     public ResponseEntity<IssueDto> create(
@@ -47,16 +57,6 @@ public class IssueController {
         return ResponseEntity.ok(issue);
     }
 
-    @GetMapping("/{issueId}")
-    @PreAuthorize("@projectAccess.canView(#projectId)")
-    public ResponseEntity<IssueDto> get(
-            @PathVariable Long projectId,
-            @PathVariable Long issueId
-    ) {
-        IssueDto issue = issueService.getById(projectId, issueId);
-        return ResponseEntity.ok(issue);
-    }
-
     @PutMapping("/{issueId}")
     @PreAuthorize("@projectAccess.canModify(#projectId)")
     public ResponseEntity<IssueDto> update(
@@ -72,6 +72,16 @@ public class IssueController {
         IssueDto updated = issueService.updateIssue(issueId, req);
 
         return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/{issueId}")
+    @PreAuthorize("@projectAccess.canModify(#projectId)")
+    public ResponseEntity<Void> delete(
+            @PathVariable Long projectId,
+            @PathVariable Long issueId
+    ) {
+        issueService.deleteIssue(projectId, issueId);
+        return ResponseEntity.noContent().build();
     }
 
 }

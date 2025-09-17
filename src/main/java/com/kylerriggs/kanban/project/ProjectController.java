@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,19 +28,21 @@ public class ProjectController {
     }
 
     @GetMapping("/{projectId}")
+    @PreAuthorize("@projectAccess.canView(#projectId)")
     public ResponseEntity<ProjectDto> getProject(@PathVariable Long projectId) {
         ProjectDto project = projectService.getById(projectId);
         return ResponseEntity.ok(project);
     }
 
     @GetMapping
+//    @PreAuthorize("@projectAccess.canView()")
     public ResponseEntity<List<ProjectSummary>> getProjectsForUser() {
         List<ProjectSummary> projects = projectService.getAllForUser();
-
         return ResponseEntity.ok(projects);
     }
 
     @PutMapping("/{projectId}")
+    @PreAuthorize("@projectAccess.canModify(#projectId)")
     public ResponseEntity<ProjectDto> updateProject(
             @PathVariable Long projectId,
             @Valid @RequestBody UpdateProjectRequest req
@@ -57,12 +60,14 @@ public class ProjectController {
     }
 
     @DeleteMapping("/{projectId}")
+    @PreAuthorize("@projectAccess.canModify(#projectId)")
     public ResponseEntity<Void> deleteProject(@Valid @PathVariable Long projectId) {
         projectService.deleteProject(projectId);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{projectId}/collaborators")
+    @PreAuthorize("@projectAccess.canModify(#projectId)")
     public ResponseEntity<Void> addCollaborator(
             @PathVariable Long projectId,
             @Valid @RequestBody CollaboratorRequest req
@@ -74,7 +79,19 @@ public class ProjectController {
         return ResponseEntity.ok().build();
     }
 
+    @DeleteMapping("/{projectId}/collaborators/{userId}")
+    @PreAuthorize("@projectAccess.canModify(#projectId)")
+    public ResponseEntity<Void> removeCollaborator(
+            @PathVariable Long projectId,
+            @PathVariable String userId
+    ) {
+        projectService.removeCollaborator(projectId, userId);
+
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/{projectId}/collaborators/{userId}")
+    @PreAuthorize("@projectAccess.canModify(#projectId)")
     public ResponseEntity<Void> updateCollaboratorRole(
             @PathVariable Long projectId,
             @PathVariable String userId,
@@ -83,15 +100,5 @@ public class ProjectController {
         projectService.updateCollaboratorRole(projectId, userId, req.newRole());
 
         return ResponseEntity.ok().build();
-    }
-
-    @DeleteMapping("/{projectId}/collaborators/{userId}")
-    public ResponseEntity<Void> removeCollaborator(
-            @PathVariable Long projectId,
-            @PathVariable String userId
-    ) {
-        projectService.removeCollaborator(projectId, userId);
-
-        return ResponseEntity.noContent().build();
     }
 }

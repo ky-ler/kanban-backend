@@ -12,7 +12,6 @@ import com.kylerriggs.kanban.status.StatusRepository;
 import com.kylerriggs.kanban.user.User;
 import com.kylerriggs.kanban.user.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,7 +50,6 @@ public class IssueService {
     }
 
     @Transactional
-    @PreAuthorize("@projectAccess.canModify(#req.projectId())")
     public IssueDto createIssue(CreateIssueRequest req) {
         String requestUserId = SecurityContextHolder.getContext().getAuthentication().getName();
 
@@ -90,7 +88,6 @@ public class IssueService {
     }
 
     @Transactional
-    @PreAuthorize("@projectAccess.canModify(#req.projectId())")
     public IssueDto updateIssue(Long issueId, CreateIssueRequest req) {
         Issue issue = issueRepository.findByProjectIdAndId(req.projectId(), issueId);
 
@@ -142,7 +139,6 @@ public class IssueService {
     }
 
     @Transactional
-    @PreAuthorize("@projectAccess.canModify(#projectId)")
     public void deleteIssue(Long projectId, Long issueId) {
         if (!issueRepository.existsByProjectIdAndId(projectId, issueId)) {
             throw new ResourceNotFoundException("Issue not found: " + issueId + " for project: " + projectId);
