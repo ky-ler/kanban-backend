@@ -1,6 +1,6 @@
 # Kanban Board Backend
 
-A robust RESTful API for a Kanban-style project management application. This back-end provides full CRUD functionality for managing projects, collaborators, and individual issues (tasks), with security handled by a containerized Keycloak instance.
+A robust RESTful API for a Kanban-style project management application. This back-end provides full CRUD functionality for managing projects, collaborators, and individual issues (tasks), with security handled by a containerized Keycloak instance. Please note that this project is currently under development.
 
 ## Tech Stack
 
