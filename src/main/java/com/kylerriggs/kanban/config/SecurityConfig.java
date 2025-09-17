@@ -32,8 +32,8 @@ public class SecurityConfig {
                                 "/swagger-resources/**",
                                 "/configuration/ui",
                                 "/configuration/security",
-                                "swagger-ui/**",
-                                "swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
                                 "/webjars/**"
                         ).permitAll().anyRequest().authenticated()
                 ).oauth2ResourceServer(auth -> auth.jwt(Customizer.withDefaults()));
