@@ -1,5 +1,6 @@
 package com.kylerriggs.kanban.user;
 
+import com.kylerriggs.kanban.user.dto.UserSummaryDto;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -31,4 +32,25 @@ public class UserMapper {
 
         return user;
     }
+
+    public UserSummaryDto toSummary(User user) {
+        return new UserSummaryDto(
+                user.getId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getFirstName(),
+                user.getLastName()
+        );
+    }
+
+    public User toEntity(String email, String username, String firstName, String lastName) {
+        User user = new User();
+        user.setEmail(email);
+        user.setUsername(username);
+        user.setFirstName(firstName);
+        user.setLastName(lastName);
+        return user;
+    }
+
+
 }
