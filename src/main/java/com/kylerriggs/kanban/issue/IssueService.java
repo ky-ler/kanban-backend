@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -73,11 +74,11 @@ public class IssueService {
                     .orElseThrow(() -> new ResourceNotFoundException("User not found: " + req.assignedToUsername()));
         }
 
-        Status status = statusRepository.findById(req.statusId())
-                .orElseThrow(() -> new ResourceNotFoundException("Status not found: " + req.statusId()));
+        Status status = statusRepository.findByName(req.statusName())
+                .orElseThrow(() -> new ResourceNotFoundException("Status not found: " + req.statusName()));
 
-        Priority priority = priorityRepository.findById(req.priorityId())
-                .orElseThrow(() -> new ResourceNotFoundException("Priority not found: " + req.priorityId()));
+        Priority priority = priorityRepository.findByName(req.priorityName())
+                .orElseThrow(() -> new ResourceNotFoundException("Priority not found: " + req.priorityName()));
 
 
         Issue issue = issueMapper.toEntity(req, project, createdBy, assignedTo, status, priority);
@@ -98,17 +99,24 @@ public class IssueService {
         Project project = projectRepository.findById(req.projectId())
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + req.projectId()));
 
-        if (req.title() != null && !req.title().equals(issue.getTitle())) {
+        if (!req.title().equals(issue.getTitle())) {
             issue.setTitle(req.title());
         }
 
-        if (req.description() != null && !req.description().equals(issue.getDescription())) {
+        if (!req.description().equals(issue.getDescription())) {
             issue.setDescription(req.description());
         }
 
-        if (req.assignedToUsername() != null && !req.assignedToUsername().equals(issue.getAssignedTo().getUsername())) {
+        if (req.assignedToUsername().isEmpty()) {
+            if (issue.getAssignedTo() != null) {
+                issue.setAssignedTo(null);
+            }
+        }
+        else if (!Objects.equals(
+                        issue.getAssignedTo() != null ? issue.getAssignedTo().getUsername() : null,
+                        req.assignedToUsername())) {
             if (project.getCollaborators().stream()
-                    .noneMatch(c -> c.getUser().getUsername().equals(req.assignedToUsername()))) {
+                .noneMatch(c -> c.getUser().getUsername().equals(req.assignedToUsername()))) {
 
                 throw new IllegalArgumentException(
                         "User is not a collaborator on the project: " + req.assignedToUsername()
@@ -121,15 +129,15 @@ public class IssueService {
             issue.setAssignedTo(assignedTo);
         }
 
-        if (req.statusId() != null && !req.statusId().equals(issue.getStatus().getId())) {
-            Status status = statusRepository.findById(req.statusId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Status not found: " + req.statusId()));
+        if (!req.statusName().equals(issue.getStatus().getName())) {
+            Status status = statusRepository.findByName(req.statusName())
+                    .orElseThrow(() -> new ResourceNotFoundException("Status not found: " + req.statusName()));
             issue.setStatus(status);
         }
 
-        if (req.priorityId() != null && !req.projectId().equals(issue.getPriority().getId())) {
-            Priority priority = priorityRepository.findById(req.priorityId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Priority not found: " + req.priorityId()));
+        if (!req.priorityName().equals(issue.getPriority().getName())) {
+            Priority priority = priorityRepository.findByName(req.priorityName())
+                    .orElseThrow(() -> new ResourceNotFoundException("Priority not found: " + req.priorityName()));
             issue.setPriority(priority);
         }
 

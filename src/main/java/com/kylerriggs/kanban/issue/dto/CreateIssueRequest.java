@@ -16,9 +16,9 @@ public record CreateIssueRequest(
 
         String description,
 
-        @NotNull(message = "Status ID cannot be null")
-        Long statusId,
+        @NotNull(message = "Status cannot be null")
+        String statusName,
 
-        @NotNull(message = "Priority ID cannot be null")
-        Long priorityId
+        @NotNull(message = "Priority cannot be null")
+        String priorityName
 ) { }

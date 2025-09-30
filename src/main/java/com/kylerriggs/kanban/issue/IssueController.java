@@ -48,8 +48,8 @@ public class IssueController {
                 req.assignedToUsername(),
                 req.title(),
                 req.description(),
-                req.statusId(),
-                req.priorityId()
+                req.statusName(),
+                req.priorityName()
         );
 
         IssueDto issue = issueService.createIssue(createIssueRequest);
