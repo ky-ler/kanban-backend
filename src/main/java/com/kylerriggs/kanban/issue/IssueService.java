@@ -15,9 +15,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -29,23 +31,22 @@ public class IssueService {
     private final PriorityRepository priorityRepository;
     private final IssueMapper issueMapper;
 
-    @Transactional
+    @Transactional(readOnly = true)
     public List<IssueDto> getAllForProject(Long projectId) {
+        if (!projectRepository.existsById(projectId)) {
+            throw new ResourceNotFoundException("Project not found: " + projectId);
+        }
 
         List<Issue> issues = issueRepository.findAllByProjectId(projectId);
-
         return issues.stream()
                 .map(issueMapper::toDto)
                 .toList();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public IssueDto getById(Long projectId, Long issueId) {
-        Issue issue = issueRepository.findByProjectIdAndId(projectId, issueId);
-
-        if (issue == null) {
-            throw new ResourceNotFoundException("Issue not found: " + issueId + " for project: " + projectId);
-        }
+        Issue issue = issueRepository.findByProjectIdAndId(projectId, issueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Issue not found: " + issueId + " for project: " + projectId));
 
         return issueMapper.toDto(issue);
     }
@@ -60,98 +61,96 @@ public class IssueService {
         Project project = projectRepository.findById(req.projectId())
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + req.projectId()));
 
-        User assignedTo = null;
-        if (req.assignedToUsername() != null) {
-            if (project.getCollaborators().stream()
-                    .noneMatch(c -> c.getUser().getUsername().equals(req.assignedToUsername()))) {
-
-                throw new IllegalArgumentException(
-                        "User is not a collaborator on the project: " + req.assignedToUsername()
-                );
-            }
-
-            assignedTo = userRepository.findByUsername(req.assignedToUsername())
-                    .orElseThrow(() -> new ResourceNotFoundException("User not found: " + req.assignedToUsername()));
-        }
-
         Status status = statusRepository.findByName(req.statusName())
                 .orElseThrow(() -> new ResourceNotFoundException("Status not found: " + req.statusName()));
 
         Priority priority = priorityRepository.findByName(req.priorityName())
                 .orElseThrow(() -> new ResourceNotFoundException("Priority not found: " + req.priorityName()));
 
+        User assignedTo = null;
+        if (StringUtils.hasText(req.assignedToUsername())) {
+            project.getCollaborators().stream()
+                    .filter(c -> c.getUser().getUsername().equals(req.assignedToUsername()))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException(
+                            "User is not a collaborator on the project: " + req.assignedToUsername()
+                    ));
+
+            assignedTo = userRepository.findByUsername(req.assignedToUsername())
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found: " + req.assignedToUsername()));
+        }
 
         Issue issue = issueMapper.toEntity(req, project, createdBy, assignedTo, status, priority);
+        project.getIssues().add(issue);
 
-        Issue saved = issueRepository.save(issue);
+        projectRepository.save(project);
 
-        return issueMapper.toDto(saved);
+        return issueMapper.toDto(issue);
     }
 
     @Transactional
     public IssueDto updateIssue(Long issueId, CreateIssueRequest req) {
-        Issue issue = issueRepository.findByProjectIdAndId(req.projectId(), issueId);
-
-        if (issue == null) {
-            throw new ResourceNotFoundException("Issue not found: " + issueId + " for project: " + req.projectId());
-        }
-
-        Project project = projectRepository.findById(req.projectId())
+        Project projectToUpdate = projectRepository.findById(req.projectId())
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + req.projectId()));
 
-        if (!req.title().equals(issue.getTitle())) {
-            issue.setTitle(req.title());
+        Issue issue = projectToUpdate.getIssues().stream()
+                .filter(i -> Objects.equals(i.getId(), issueId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Issue not found: " + issueId));
+
+        issue.setTitle(req.title());
+        issue.setDescription(req.description());
+
+        if (!issue.getStatus().getName().equals(req.statusName())) {
+            Status newStatus = statusRepository.findByName(req.statusName())
+                    .orElseThrow(() -> new ResourceNotFoundException("Status not found: " + req.statusName()));
+            issue.setStatus(newStatus);
         }
 
-        if (!req.description().equals(issue.getDescription())) {
-            issue.setDescription(req.description());
+        if (!issue.getPriority().getName().equals(req.priorityName())) {
+            Priority newPriority = priorityRepository.findByName(req.priorityName())
+                    .orElseThrow(() -> new ResourceNotFoundException("Priority not found: " + req.priorityName()));
+            issue.setPriority(newPriority);
         }
 
-        if (req.assignedToUsername().isEmpty()) {
-            if (issue.getAssignedTo() != null) {
+        String currentAssigneeUsername = Optional.ofNullable(issue.getAssignedTo())
+                .map(User::getUsername)
+                .orElse(null);
+
+        if (!Objects.equals(currentAssigneeUsername, req.assignedToUsername())) {
+            if (StringUtils.hasText(req.assignedToUsername())) {
+                projectToUpdate.getCollaborators().stream()
+                        .filter(c -> c.getUser().getUsername().equals(req.assignedToUsername()))
+                        .findFirst()
+                        .orElseThrow(() -> new IllegalArgumentException(
+                                "User is not a collaborator on the project: " + req.assignedToUsername()
+                        ));
+
+                User newAssignee = userRepository.findByUsername(req.assignedToUsername())
+                        .orElseThrow(() -> new ResourceNotFoundException("User not found: " + req.assignedToUsername()));
+                issue.setAssignedTo(newAssignee);
+            } else {
                 issue.setAssignedTo(null);
             }
         }
-        else if (!Objects.equals(
-                        issue.getAssignedTo() != null ? issue.getAssignedTo().getUsername() : null,
-                        req.assignedToUsername())) {
-            if (project.getCollaborators().stream()
-                .noneMatch(c -> c.getUser().getUsername().equals(req.assignedToUsername()))) {
 
-                throw new IllegalArgumentException(
-                        "User is not a collaborator on the project: " + req.assignedToUsername()
-                );
-            }
+        issueRepository.save(issue);
 
-            User assignedTo = userRepository.findByUsername(req.assignedToUsername())
-                    .orElseThrow(() -> new ResourceNotFoundException("User not found: " + req.assignedToUsername()));
-
-            issue.setAssignedTo(assignedTo);
-        }
-
-        if (!req.statusName().equals(issue.getStatus().getName())) {
-            Status status = statusRepository.findByName(req.statusName())
-                    .orElseThrow(() -> new ResourceNotFoundException("Status not found: " + req.statusName()));
-            issue.setStatus(status);
-        }
-
-        if (!req.priorityName().equals(issue.getPriority().getName())) {
-            Priority priority = priorityRepository.findByName(req.priorityName())
-                    .orElseThrow(() -> new ResourceNotFoundException("Priority not found: " + req.priorityName()));
-            issue.setPriority(priority);
-        }
-
-        Issue saved = issueRepository.save(issue);
-
-        return issueMapper.toDto(saved);
+        return issueMapper.toDto(issue);
     }
 
     @Transactional
     public void deleteIssue(Long projectId, Long issueId) {
-        if (!issueRepository.existsByProjectIdAndId(projectId, issueId)) {
-            throw new ResourceNotFoundException("Issue not found: " + issueId + " for project: " + projectId);
-        }
+        Project projectToDeleteFrom = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectId));
 
-        issueRepository.deleteById(issueId);
+        Issue issueToRemove = projectToDeleteFrom.getIssues().stream()
+                .filter(i -> Objects.equals(i.getId(), issueId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Issue not found: " + issueId));
+
+        projectToDeleteFrom.getIssues().remove(issueToRemove);
+
+        projectRepository.save(projectToDeleteFrom);
     }
 }

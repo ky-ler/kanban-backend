@@ -8,7 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.net.URI;
 import java.util.List;
 
 @Slf4j
@@ -20,9 +22,7 @@ public class IssueController {
 
     @GetMapping
     @PreAuthorize("@projectAccess.canView(#projectId)")
-    public ResponseEntity<List<IssueDto>> list(
-            @PathVariable Long projectId
-    ) {
+    public ResponseEntity<List<IssueDto>> list(@PathVariable Long projectId) {
         List<IssueDto> issues = issueService.getAllForProject(projectId);
         return ResponseEntity.ok(issues);
     }
@@ -52,9 +52,15 @@ public class IssueController {
                 req.priorityName()
         );
 
-        IssueDto issue = issueService.createIssue(createIssueRequest);
+        IssueDto createdIssue = issueService.createIssue(createIssueRequest);
 
-        return ResponseEntity.ok(issue);
+        URI location = ServletUriComponentsBuilder
+                .fromCurrentContextPath()
+                .path("/api/projects/{projectId}/issues/{issueId}")
+                .buildAndExpand(projectId, createdIssue.id())
+                .toUri();
+
+        return ResponseEntity.created(location).body(createdIssue);
     }
 
     @PutMapping("/{issueId}")
@@ -64,14 +70,18 @@ public class IssueController {
             @PathVariable Long issueId,
             @Valid @RequestBody CreateIssueRequest req
     ) {
-        IssueDto issue = issueService.getById(projectId, issueId);
-        if (issue == null) {
-            return ResponseEntity.notFound().build();
-        }
+        CreateIssueRequest updateIssueRequest = new CreateIssueRequest(
+                projectId,
+                req.assignedToUsername(),
+                req.title(),
+                req.description(),
+                req.statusName(),
+                req.priorityName()
+        );
 
-        IssueDto updated = issueService.updateIssue(issueId, req);
+        IssueDto updatedIssue = issueService.updateIssue(issueId, updateIssueRequest);
 
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(updatedIssue);
     }
 
     @DeleteMapping("/{issueId}")
