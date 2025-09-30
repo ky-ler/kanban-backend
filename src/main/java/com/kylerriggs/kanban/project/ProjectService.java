@@ -1,6 +1,7 @@
 package com.kylerriggs.kanban.project;
 
 import com.kylerriggs.kanban.exception.ResourceNotFoundException;
+import com.kylerriggs.kanban.issue.IssueRepository;
 import com.kylerriggs.kanban.project.dto.ProjectDto;
 import com.kylerriggs.kanban.project.dto.ProjectSummary;
 import com.kylerriggs.kanban.user.User;
@@ -18,10 +19,10 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ProjectUserRepository projectUserRepository;
+    private final IssueRepository issueRepository;
     private final ProjectMapper projectMapper;
 
 
-    // Create a new project and assign the creator as ADMIN
     @Transactional
     public ProjectDto createProject(String name, String description) {
         String requestUserId = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -34,20 +35,18 @@ public class ProjectService {
                 .createdBy(owner)
                 .build();
 
-        projectRepository.save(project);
-
-        ProjectUser membership = ProjectUser.builder()
+        ProjectUser ownerMembership = ProjectUser.builder()
                 .project(project)
                 .user(owner)
                 .role(ProjectRole.ADMIN)
                 .build();
 
-        projectUserRepository.save(membership);
+        project.getCollaborators().add(ownerMembership);
+        Project savedProject = projectRepository.save(project);
 
-        return projectMapper.toDto(project);
+        return projectMapper.toDto(savedProject);
     }
 
-    // Retrieve project by ID
     @Transactional(readOnly = true)
     public ProjectDto getById(Long projectId) {
         Project project = projectRepository.findById(projectId)
@@ -56,7 +55,6 @@ public class ProjectService {
         return projectMapper.toDto(project);
     }
 
-    // Get all projects where the user is a collaborator
     @Transactional(readOnly = true)
     public List<ProjectSummary> getAllForUser() {
         String userId = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -67,99 +65,122 @@ public class ProjectService {
                 .toList();
     }
 
-    // Update the name or description of an existing project
     @Transactional
     public ProjectDto updateProject(Long projectId, String name, String description) {
-        Project project = projectRepository.findById(projectId)
+        Project projectToUpdate = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectId));
-        project.setName(name);
-        project.setDescription(description);
-        projectRepository.save(project);
 
-        return projectMapper.toDto(project);
+        projectToUpdate.setName(name);
+        projectToUpdate.setDescription(description);
+
+        projectRepository.save(projectToUpdate);
+
+        return projectMapper.toDto(projectToUpdate);
     }
 
-    // Delete a project and its collaborators
     @Transactional
     public void deleteProject(Long projectId) {
-        if (!projectRepository.existsById(projectId)) {
-            throw new ResourceNotFoundException("Project not found: " + projectId);
-        }
+        Project projectToDelete = projectRepository.findById(projectId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectId));
 
-        projectRepository.deleteById(projectId);
+        projectRepository.delete(projectToDelete);
     }
 
-    // Add a collaborator with the given role
     @Transactional
     public void addCollaborator(Long projectId, String userId, ProjectRole role) {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectId));
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
 
-        ProjectUserId key = new ProjectUserId(project.getId(), user.getId());
+        boolean alreadyCollaborator = project.getCollaborators().stream()
+                .anyMatch(c -> c.getUser().getId().equals(userId));
 
-        if (projectUserRepository.existsById(key)) {
-            throw new IllegalArgumentException("User is already a collaborator");
+        if (alreadyCollaborator) {
+            throw new IllegalArgumentException("User is already a collaborator in this project.");
         }
 
-        ProjectUser collaborator = ProjectUser.builder()
+        User userToAdd = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+
+        ProjectUser newCollaborator = ProjectUser.builder()
                 .project(project)
-                .user(user)
+                .user(userToAdd)
                 .role(role)
                 .build();
 
-        projectUserRepository.save(collaborator);
+        project.getCollaborators().add(newCollaborator);
+        projectRepository.save(project);
     }
 
-    // Remove a collaborator
     @Transactional
     public void removeCollaborator(Long projectId, String userId) {
-        ProjectUserId key = new ProjectUserId(projectId, userId);
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectId));
 
-        if (!projectUserRepository.existsById(key)) {
-            throw new IllegalArgumentException("User is not a collaborator: " + userId);
+        ProjectUser collaboratorToRemove = project.getCollaborators().stream()
+                .filter(c -> c.getUser().getId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Collaborator not found with ID: " + userId));
+
+        if (project.getCollaborators().size() == 1) {
+            throw new IllegalArgumentException("Cannot remove the only collaborator. Please delete the project instead.");
         }
 
-        // If the user is the only collaborator, delete the project
-        ProjectUser membership = projectUserRepository.findById(key)
-                .orElseThrow(() -> new ResourceNotFoundException("Collaborator not found"));
-        if (membership.getProject().getCollaborators().size() == 1) {
-            projectRepository.delete(membership.getProject());
+        long adminCount = project.getCollaborators().stream()
+                .filter(c -> c.getRole() == ProjectRole.ADMIN)
+                .count();
+
+        if (adminCount == 1 && collaboratorToRemove.getRole() == ProjectRole.ADMIN) {
+            throw new IllegalArgumentException("Cannot remove the last admin from the project.");
+        }
+
+        // Unassign any issues assigned to the user being removed
+        project.getIssues().forEach(issue -> {
+            if (issue.getAssignedTo() != null && issue.getAssignedTo().getId().equals(userId)) {
+                issue.setAssignedTo(null);
+            }
+        });
+
+        project.getCollaborators().remove(collaboratorToRemove);
+
+        // If no admins remain, promote the first found collaborator to admin
+        if (project.getCollaborators().stream().noneMatch(c -> c.getRole() == ProjectRole.ADMIN)) {
+            project.getCollaborators().stream()
+                    .findFirst()
+                    .ifPresent(newAdmin -> newAdmin.setRole(ProjectRole.ADMIN));
+        }
+
+        projectRepository.save(project);
+    }
+
+    @Transactional
+    public void updateCollaboratorRole(Long projectId, String userId, ProjectRole newRole) {
+        Project project = projectRepository.findById(projectId)
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + projectId));
+
+        ProjectUser collaboratorToUpdate = project.getCollaborators().stream()
+                .filter(c -> c.getUser().getId().equals(userId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Collaborator not found with ID: " + userId));
+
+        // If this user is the only collaborator, they MUST be an ADMIN.
+        if (project.getCollaborators().size() == 1) {
+            if (newRole != ProjectRole.ADMIN) {
+                throw new IllegalArgumentException("Cannot change the role of the only collaborator. They must remain an ADMIN.");
+            }
             return;
         }
 
-        // If removing the user would leave only 1 person as a collaborator, set their role to ADMIN
-        if (membership.getProject().getCollaborators().size() == 2) {
-            ProjectUser otherMember = membership.getProject().getCollaborators().stream()
-                    .filter(m -> !m.getUser().getId().equals(userId))
-                    .findFirst()
-                    .orElseThrow(() -> new ResourceNotFoundException("Other collaborator not found"));
-            otherMember.setRole(ProjectRole.ADMIN);
-            projectUserRepository.save(otherMember);
+        // Check if the user is the last admin, and prevent demotion if so
+        long adminCount = project.getCollaborators().stream()
+                .filter(c -> c.getRole() == ProjectRole.ADMIN)
+                .count();
+
+        if (adminCount == 1 && collaboratorToUpdate.getRole() == ProjectRole.ADMIN && newRole != ProjectRole.ADMIN) {
+            throw new IllegalArgumentException("Cannot demote the last admin of the project. Please assign another admin first.");
         }
 
-        projectUserRepository.deleteById(key);
-    }
+        collaboratorToUpdate.setRole(newRole);
 
-    // Update collaborator
-    @Transactional
-    public void updateCollaboratorRole(Long projectId, String userId, ProjectRole newRole) {
-        ProjectUserId key = new ProjectUserId(projectId, userId);
-        ProjectUser membership = projectUserRepository.findById(key)
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Collaborator not found"));
-
-        if (membership.getProject().getCollaborators().size() == 1) {
-            if (newRole != ProjectRole.ADMIN) {
-                membership.setRole(ProjectRole.ADMIN);
-                projectUserRepository.save(membership);
-                throw new IllegalArgumentException("User has been set to admin due to being the only collaborator");
-            }
-            throw new IllegalArgumentException("Cannot change role of the only collaborator");
-        }
-
-        membership.setRole(newRole);
-        projectUserRepository.save(membership);
+        projectRepository.save(project);
     }
 }

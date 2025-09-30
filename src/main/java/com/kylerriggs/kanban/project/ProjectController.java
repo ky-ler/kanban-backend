@@ -7,7 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
+import java.net.URI;
 import java.util.List;
 
 @Slf4j
@@ -19,12 +21,15 @@ public class ProjectController {
     private final ProjectService projectService;
 
     @PostMapping
-    public ResponseEntity<ProjectDto> createProject(@Valid @RequestBody CreateProjectRequest req) {
-        ProjectDto project = projectService.createProject(
-                req.name(), req.description()
-        );
+    public ResponseEntity<ProjectDto> createProject(@Valid @RequestBody ProjectRequest req) {
+        ProjectDto project = projectService.createProject(req.name(), req.description());
 
-        return ResponseEntity.ok(project);
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{projectId}")
+                .buildAndExpand(project.id())
+                .toUri();
+
+        return ResponseEntity.created(location).body(project);
     }
 
     @GetMapping("/{projectId}")
@@ -45,23 +50,15 @@ public class ProjectController {
     @PreAuthorize("@projectAccess.canModify(#projectId)")
     public ResponseEntity<ProjectDto> updateProject(
             @PathVariable Long projectId,
-            @Valid @RequestBody UpdateProjectRequest req
+            @Valid @RequestBody ProjectRequest req
     ) {
-        ProjectDto project = projectService.getById(projectId);
-        if (project == null) {
-            return ResponseEntity.notFound().build();
-        }
-
-        ProjectDto updated = projectService.updateProject(
-                projectId, req.name(), req.description()
-        );
-
-        return ResponseEntity.ok(updated);
+        ProjectDto updatedProject = projectService.updateProject(projectId, req.name(), req.description());
+        return ResponseEntity.ok(updatedProject);
     }
 
     @DeleteMapping("/{projectId}")
     @PreAuthorize("@projectAccess.canModify(#projectId)")
-    public ResponseEntity<Void> deleteProject(@Valid @PathVariable Long projectId) {
+    public ResponseEntity<Void> deleteProject(@PathVariable Long projectId) {
         projectService.deleteProject(projectId);
         return ResponseEntity.noContent().build();
     }
@@ -72,11 +69,8 @@ public class ProjectController {
             @PathVariable Long projectId,
             @Valid @RequestBody CollaboratorRequest req
     ) {
-        projectService.addCollaborator(
-                projectId, req.userId(), req.role()
-        );
-
-        return ResponseEntity.ok().build();
+        projectService.addCollaborator(projectId, req.userId(), req.role());
+        return ResponseEntity.noContent().build();
     }
 
     @DeleteMapping("/{projectId}/collaborators/{userId}")
@@ -86,7 +80,6 @@ public class ProjectController {
             @PathVariable String userId
     ) {
         projectService.removeCollaborator(projectId, userId);
-
         return ResponseEntity.noContent().build();
     }
 
@@ -98,7 +91,6 @@ public class ProjectController {
             @Valid @RequestBody RoleUpdateRequest req
     ) {
         projectService.updateCollaboratorRole(projectId, userId, req.newRole());
-
         return ResponseEntity.ok().build();
     }
 }
