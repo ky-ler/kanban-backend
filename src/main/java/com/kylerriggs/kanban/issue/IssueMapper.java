@@ -12,14 +12,13 @@ import org.springframework.stereotype.Service;
 @Service
 public class IssueMapper {
     public IssueDto toDto(Issue issue) {
-        UserSummaryDto createdBy = issue.getCreatedBy() != null ?
-                new UserSummaryDto(
+        UserSummaryDto createdBy = new UserSummaryDto(
                 issue.getCreatedBy().getId(),
                 issue.getCreatedBy().getUsername(),
                 issue.getCreatedBy().getEmail(),
                 issue.getCreatedBy().getFirstName(),
                 issue.getCreatedBy().getLastName()
-        ) : null;
+        );
 
         UserSummaryDto assignedTo = issue.getAssignedTo() != null ?
                 new UserSummaryDto(
@@ -39,7 +38,7 @@ public class IssueMapper {
                 issue.getStatus(),
                 issue.getPriority(),
                 issue.getProject().getId(),
-                issue.getDateCreated().toString(),
+                issue.getDateCreated()!= null ? issue.getDateModified().toString() : null,
                 issue.getDateModified() != null ? issue.getDateModified().toString() : null
         );
     }
