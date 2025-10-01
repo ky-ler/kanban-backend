@@ -7,6 +7,8 @@ import com.kylerriggs.kanban.project.dto.ProjectSummary;
 import com.kylerriggs.kanban.user.dto.UserSummaryDto;
 import org.springframework.stereotype.Service;
 
+import java.util.Objects;
+
 @Service
 public class ProjectMapper {
     public ProjectDto toDto(Project project) {
@@ -54,6 +56,16 @@ public class ProjectMapper {
     }
 
     public ProjectSummary toSummaryDto(Project project) {
-        return new ProjectSummary(project.getId(), project.getName());
+        int doneIssues = (int) project.getIssues().stream()
+                .filter(issue -> Objects.equals(issue.getStatus().getName(), "Done"))
+                .count();
+
+        return new ProjectSummary(
+                project.getId(),
+                project.getName(),
+                project.getDescription(),
+                project.getDateModified().toString(),
+                doneIssues,
+                project.getIssues().size());
     }
 }
