@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -80,12 +81,13 @@ public class IssueService {
                     .orElseThrow(() -> new ResourceNotFoundException("User not found: " + req.assignedToUsername()));
         }
 
-        Issue issue = issueMapper.toEntity(req, project, createdBy, assignedTo, status, priority);
-        project.getIssues().add(issue);
+        Issue newIssue = issueMapper.toEntity(req, project, createdBy, assignedTo, status, priority);
+        project.getIssues().add(newIssue);
 
+        // TODO: Fix having to set the date modified manually
+        project.setDateModified(Instant.now());
         projectRepository.save(project);
-
-        return issueMapper.toDto(issue);
+        return issueMapper.toDto(newIssue);
     }
 
     @Transactional
@@ -93,27 +95,27 @@ public class IssueService {
         Project projectToUpdate = projectRepository.findById(req.projectId())
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found: " + req.projectId()));
 
-        Issue issue = projectToUpdate.getIssues().stream()
+        Issue issueToUpdate = projectToUpdate.getIssues().stream()
                 .filter(i -> Objects.equals(i.getId(), issueId))
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Issue not found: " + issueId));
 
-        issue.setTitle(req.title());
-        issue.setDescription(req.description());
+        issueToUpdate.setTitle(req.title());
+        issueToUpdate.setDescription(req.description());
 
-        if (!issue.getStatus().getName().equals(req.statusName())) {
+        if (!issueToUpdate.getStatus().getName().equals(req.statusName())) {
             Status newStatus = statusRepository.findByName(req.statusName())
                     .orElseThrow(() -> new ResourceNotFoundException("Status not found: " + req.statusName()));
-            issue.setStatus(newStatus);
+            issueToUpdate.setStatus(newStatus);
         }
 
-        if (!issue.getPriority().getName().equals(req.priorityName())) {
+        if (!issueToUpdate.getPriority().getName().equals(req.priorityName())) {
             Priority newPriority = priorityRepository.findByName(req.priorityName())
                     .orElseThrow(() -> new ResourceNotFoundException("Priority not found: " + req.priorityName()));
-            issue.setPriority(newPriority);
+            issueToUpdate.setPriority(newPriority);
         }
 
-        String currentAssigneeUsername = Optional.ofNullable(issue.getAssignedTo())
+        String currentAssigneeUsername = Optional.ofNullable(issueToUpdate.getAssignedTo())
                 .map(User::getUsername)
                 .orElse(null);
 
@@ -128,15 +130,16 @@ public class IssueService {
 
                 User newAssignee = userRepository.findByUsername(req.assignedToUsername())
                         .orElseThrow(() -> new ResourceNotFoundException("User not found: " + req.assignedToUsername()));
-                issue.setAssignedTo(newAssignee);
+                issueToUpdate.setAssignedTo(newAssignee);
             } else {
-                issue.setAssignedTo(null);
+                issueToUpdate.setAssignedTo(null);
             }
         }
 
-        issueRepository.save(issue);
-
-        return issueMapper.toDto(issue);
+        // TODO: Fix having to set the date modified manually
+        projectToUpdate.setDateModified(Instant.now());
+        projectRepository.save(projectToUpdate);
+        return issueMapper.toDto(issueToUpdate);
     }
 
     @Transactional
@@ -150,7 +153,8 @@ public class IssueService {
                 .orElseThrow(() -> new ResourceNotFoundException("Issue not found: " + issueId));
 
         projectToDeleteFrom.getIssues().remove(issueToRemove);
-
+        // TODO: Fix having to set the date modified manually
+        projectToDeleteFrom.setDateModified(Instant.now());
         projectRepository.save(projectToDeleteFrom);
     }
 }
