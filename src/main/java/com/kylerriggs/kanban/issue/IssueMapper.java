@@ -15,18 +15,14 @@ public class IssueMapper {
         UserSummaryDto createdBy = new UserSummaryDto(
                 issue.getCreatedBy().getId(),
                 issue.getCreatedBy().getUsername(),
-                issue.getCreatedBy().getEmail(),
-                issue.getCreatedBy().getFirstName(),
-                issue.getCreatedBy().getLastName()
+                issue.getCreatedBy().getProfileImageUrl()
         );
 
         UserSummaryDto assignedTo = issue.getAssignedTo() != null ?
                 new UserSummaryDto(
                         issue.getAssignedTo().getId(),
                         issue.getAssignedTo().getUsername(),
-                        issue.getAssignedTo().getEmail(),
-                        issue.getAssignedTo().getFirstName(),
-                        issue.getAssignedTo().getLastName()
+                        issue.getAssignedTo().getProfileImageUrl()
                 ) : null;
 
         return new IssueDto(
