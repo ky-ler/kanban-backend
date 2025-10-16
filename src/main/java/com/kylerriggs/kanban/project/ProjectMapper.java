@@ -19,11 +19,11 @@ public class ProjectMapper {
     private final IssueMapper issueMapper;
 
     public ProjectDto toDto(Project project) {
-        UserSummaryDto creatorSummary = userMapper.toDto(project.getCreatedBy());
+        UserSummaryDto creatorSummary = userMapper.toSummaryDto(project.getCreatedBy());
 
         CollaboratorDto[] collaborators = project.getCollaborators().stream()
                 .map(c -> new CollaboratorDto(
-                        userMapper.toDto(c.getUser()),
+                        userMapper.toSummaryDto(c.getUser()),
                         c.getRole()
                 ))
                 .toArray(CollaboratorDto[]::new);

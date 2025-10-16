@@ -1,5 +1,6 @@
 package com.kylerriggs.kanban.user;
 
+import com.kylerriggs.kanban.user.dto.UserDto;
 import com.kylerriggs.kanban.user.dto.UserSummaryDto;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
@@ -46,11 +47,22 @@ public class UserMapper {
         }
     }
 
-    public UserSummaryDto toDto(User user) {
+    public UserSummaryDto toSummaryDto(User user) {
         return new UserSummaryDto(
                 user.getId(),
                 user.getUsername(),
                 user.getProfileImageUrl()
+        );
+    }
+
+    public UserDto toUserDto(User user) {
+        String defaultProjectId = user.getDefaultProject() != null ? user.getDefaultProject().getId().toString() : null;
+        return new UserDto(
+                user.getId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getProfileImageUrl(),
+                defaultProjectId
         );
     }
 
