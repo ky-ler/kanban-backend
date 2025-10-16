@@ -33,14 +33,4 @@ public class UserSynchronizer {
             userRepository.save(user);
         }
     }
-
-    private Optional<String> getUserEmail(final Jwt token) {
-        Map<String, Object> claims = token.getClaims();
-
-        if (claims.containsKey("email")) {
-            return Optional.of((String) claims.get("email"));
-        }
-
-        return Optional.empty();
-    }
 }
