@@ -23,17 +23,14 @@ public class User extends BaseEntity {
     @Id
     private String id;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @Column(nullable = false, length = 50)
     private String username;
 
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(name = "first_name")
-    private String firstName;
-
-    @Column(name = "last_name")
-    private String lastName;
+    @Column(name = "profile_image_url")
+    private String profileImageUrl;
 
     @OneToMany(mappedBy = "createdBy")
     @Builder.Default
